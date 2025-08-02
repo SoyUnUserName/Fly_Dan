@@ -1,0 +1,250 @@
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+local RS=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local StarterGui=game:GetService("StarterGui")
+
+local player=Players.LocalPlayer
+local flyEnabled=false
+local flySpeed=100
+local toggleKey=Enum.KeyCode.R
+local hideKey=Enum.KeyCode.T
+local flightConn,gyro,vel
+local isTyping=false
+
+local gui=Instance.new("ScreenGui")
+gui.Name="FlightGUI"
+gui.ResetOnSpawn=false
+gui.Parent=player:WaitForChild("PlayerGui")
+
+local frame=Instance.new("Frame")
+frame.Size=UDim2.new(0,250,0,220)
+frame.AnchorPoint=Vector2.new(0.5,0.5)
+frame.Position=UDim2.new(0.5,0,0.5,0)
+frame.BackgroundColor3=Color3.new(0,0,0)
+frame.BorderSizePixel=2
+frame.BorderColor3=Color3.fromRGB(0,255,0)
+frame.Parent=gui
+
+local status=Instance.new("TextLabel")
+status.Size=UDim2.new(0,230,0,30)
+status.Position=UDim2.new(0,10,0,10)
+status.BackgroundTransparency=1
+status.TextColor3=Color3.fromRGB(0,255,0)
+status.Font=Enum.Font.GothamBold
+status.TextScaled=true
+status.Text="Vuelo: OFF"
+status.Parent=frame
+
+local lblVel=Instance.new("TextLabel")
+lblVel.Size=UDim2.new(0,230,0,20)
+lblVel.Position=UDim2.new(0,10,0,50)
+lblVel.BackgroundTransparency=1
+lblVel.TextColor3=Color3.fromRGB(0,255,0)
+lblVel.Font=Enum.Font.GothamBold
+lblVel.TextScaled=true
+lblVel.Text="Velocidad:"
+lblVel.Parent=frame
+
+local inVel=Instance.new("TextBox")
+inVel.Size=UDim2.new(0,230,0,25)
+inVel.Position=UDim2.new(0,10,0,70)
+inVel.BackgroundColor3=Color3.new(0,0,0)
+inVel.BorderColor3=Color3.fromRGB(0,255,0)
+inVel.TextColor3=Color3.fromRGB(0,255,0)
+inVel.Font=Enum.Font.GothamBold
+inVel.TextScaled=true
+inVel.ClearTextOnFocus=false
+inVel.Text=tostring(flySpeed)
+inVel.Parent=frame
+
+local lblKey=Instance.new("TextLabel")
+lblKey.Size=UDim2.new(0,230,0,20)
+lblKey.Position=UDim2.new(0,10,0,105)
+lblKey.BackgroundTransparency=1
+lblKey.TextColor3=Color3.fromRGB(0,255,0)
+lblKey.Font=Enum.Font.GothamBold
+lblKey.TextScaled=true
+lblKey.Text="Tecla Toggle:"
+lblKey.Parent=frame
+
+local inKey=Instance.new("TextBox")
+inKey.Size=UDim2.new(0,230,0,25)
+inKey.Position=UDim2.new(0,10,0,125)
+inKey.BackgroundColor3=Color3.new(0,0,0)
+inKey.BorderColor3=Color3.fromRGB(0,255,0)
+inKey.TextColor3=Color3.fromRGB(0,255,0)
+inKey.Font=Enum.Font.GothamBold
+inKey.TextScaled=true
+inKey.ClearTextOnFocus=false
+inKey.Text=toggleKey.Name
+inKey.Parent=frame
+
+local lblHide=Instance.new("TextLabel")
+lblHide.Size=UDim2.new(0,230,0,20)
+lblHide.Position=UDim2.new(0,10,0,155)
+lblHide.BackgroundTransparency=1
+lblHide.TextColor3=Color3.fromRGB(0,255,0)
+lblHide.Font=Enum.Font.GothamBold
+lblHide.TextScaled=true
+lblHide.Text="Tecla Ocultar GUI:"
+lblHide.Parent=frame
+
+local inHide=Instance.new("TextBox")
+inHide.Size=UDim2.new(0,230,0,25)
+inHide.Position=UDim2.new(0,10,0,175)
+inHide.BackgroundColor3=Color3.new(0,0,0)
+inHide.BorderColor3=Color3.fromRGB(0,255,0)
+inHide.TextColor3=Color3.fromRGB(0,255,0)
+inHide.Font=Enum.Font.GothamBold
+inHide.TextScaled=true
+inHide.ClearTextOnFocus=false
+inHide.Text=hideKey.Name
+inHide.Parent=frame
+
+local infoLabel=Instance.new("TextLabel")
+infoLabel.Size=UDim2.new(0,300,0,50)
+infoLabel.AnchorPoint=Vector2.new(0.5,0.5)
+infoLabel.Position=UDim2.new(0.5,0,0.5,0)
+infoLabel.BackgroundTransparency=1
+infoLabel.TextColor3=Color3.fromRGB(0,255,0)
+infoLabel.Font=Enum.Font.GothamBold
+infoLabel.TextScaled=true
+infoLabel.Visible=false
+infoLabel.ZIndex=10
+infoLabel.Parent=gui
+
+do
+  local dragging,dragStart,startPos,dragInput
+  frame.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1 then
+      dragging=true
+      dragStart=input.Position
+      startPos=frame.Position
+      dragInput=input
+      input.Changed:Connect(function()
+        if input.UserInputState==Enum.UserInputState.End then
+          dragging=false
+        end
+      end)
+    end
+  end)
+  frame.InputChanged:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseMovement then
+      dragInput=input
+    end
+  end)
+  UIS.InputChanged:Connect(function(input)
+    if dragging and input==dragInput then
+      local delta=input.Position-dragStart
+      frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+  end)
+end
+
+local function showMessage(txt)
+  infoLabel.TextTransparency=0
+  infoLabel.Text=txt
+  infoLabel.Visible=true
+  TweenService:Create(infoLabel,TweenInfo.new(1.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{TextTransparency=1}):Play()
+end
+
+for _,txtb in ipairs({inVel,inKey,inHide}) do
+  txtb.Focused:Connect(function() isTyping=true end)
+  txtb.FocusLost:Connect(function() isTyping=false end)
+end
+
+inVel.FocusLost:Connect(function()
+  local n=tonumber(inVel.Text)
+  if n and n>0 then
+    flySpeed=math.floor(n)
+  end
+  inVel.Text=tostring(flySpeed)
+end)
+
+inKey.FocusLost:Connect(function()
+  local name=inKey.Text:upper():gsub("%s+","")
+  if Enum.KeyCode[name] then
+    toggleKey=Enum.KeyCode[name]
+  end
+  inKey.Text=toggleKey.Name
+end)
+
+inHide.FocusLost:Connect(function()
+  local name=inHide.Text:upper():gsub("%s+","")
+  if Enum.KeyCode[name] then
+    hideKey=Enum.KeyCode[name]
+  end
+  inHide.Text=hideKey.Name
+end)
+
+local function startFlight()
+  local char=player.Character or player.CharacterAdded:Wait()
+  local root=char:WaitForChild("HumanoidRootPart")
+  local hum=char:FindFirstChildOfClass("Humanoid")
+  if not hum then return end
+  hum.PlatformStand=true
+  if not gyro or not gyro.Parent then
+    gyro=Instance.new("BodyGyro",root)
+    gyro.P=10000
+    gyro.D=255
+    gyro.MaxTorque=Vector3.new(math.huge,math.huge,math.huge)
+  end
+  if not vel or not vel.Parent then
+    vel=Instance.new("BodyVelocity",root)
+    vel.MaxForce=Vector3.new(math.huge,math.huge,math.huge)
+  end
+  flightConn=RS.Heartbeat:Connect(function()
+    local cam=workspace.CurrentCamera
+    local dir=Vector3.new()
+    if UIS:IsKeyDown(Enum.KeyCode.W) then dir=dir+cam.CFrame.LookVector end
+    if UIS:IsKeyDown(Enum.KeyCode.S) then dir=dir-cam.CFrame.LookVector end
+    if UIS:IsKeyDown(Enum.KeyCode.A) then dir=dir-cam.CFrame.RightVector end
+    if UIS:IsKeyDown(Enum.KeyCode.D) then dir=dir+cam.CFrame.RightVector end
+    vel.Velocity=(dir.Magnitude>0 and dir.Unit*flySpeed) or Vector3.new()
+    gyro.CFrame=CFrame.new(root.Position,root.Position+cam.CFrame.LookVector)
+  end)
+  status.Text="Vuelo: ON"
+end
+
+local function stopFlight()
+  local char=player.Character
+  if char then
+    local hum=char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand=false end
+  end
+  if flightConn then
+    flightConn:Disconnect()
+    flightConn=nil
+  end
+  if gyro then
+    gyro:Destroy()
+    gyro=nil
+  end
+  if vel then
+    vel:Destroy()
+    vel=nil
+  end
+  status.Text="Vuelo: OFF"
+end
+
+StarterGui:SetCore("SendNotification",{Title="Script De Vuelo",Text="✅ Volar Sin Limites ✅",Duration=5})
+
+UIS.InputBegan:Connect(function(input,gameProcessed)
+  if gameProcessed or isTyping then return end
+  if input.KeyCode==toggleKey then
+    flyEnabled=not flyEnabled
+    if flyEnabled then
+      startFlight()
+    else
+      stopFlight()
+    end
+    if not frame.Visible then
+      showMessage(status.Text)
+    end
+  elseif input.KeyCode==hideKey then
+    frame.Visible=not frame.Visible
+  end
+end)
+
+player.CharacterRemoving:Connect(stopFlight)
